@@ -1,6 +1,6 @@
-use proc_macro::{Span, TokenStream};
+use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, DeriveInput};
+use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_attribute]
 pub fn bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -20,7 +20,7 @@ pub fn bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
         unimplemented!();
     };
 
-    let bs = fields.iter().map(|f| {
+    let punctuated = fields.iter().map(|f| {
         if let syn::Field {
             ty:
                 syn::Type::Path(syn::TypePath {
@@ -33,17 +33,44 @@ pub fn bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
             segments
         } else {
             unimplemented!()
-        };
+        }
     });
 
-    eprintln!("{:?}", bs.collect::<Vec<_>>());
-    let expanded = quote! {
-        // pub trait Specifier {
-        //     const BITS: u8;
-        // }
-        //
-        // impl Specifier for #bs {}
+    // let idents = punctuated
+    //     .into_iter()
+    //     .map(|pathsegment| pathsegment.first().unwrap().ident.clone())
+    //     .collect::<Vec<_>>()
+    //     .clone();
 
+    let traits = quote!(
+        pub trait Specifier {
+            const BITS: u8;
+        }
+    );
+
+    let mut bs: Vec<syn::Ident> = Vec::with_capacity(64);
+    let mut bits: Vec<u8> = Vec::with_capacity(64);
+    for i in 1..=64 {
+        let name = format!("B{}", i);
+        let ident = syn::Ident::new(name.as_str(), proc_macro2::Span::call_site());
+        bs.push(ident);
+        bits.push(i);
+    }
+
+    let structs = quote! {
+        #(pub struct #bs;)*
     };
-    expanded.into()
+
+    let impls = quote!(
+        #(impl Specifier for #bs{
+            const BITS: u8 = #bits;
+        })*
+    );
+
+    let prog = quote!(
+        #traits
+        #structs
+        #impls
+    );
+    prog.into()
 }

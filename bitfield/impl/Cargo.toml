@@ -10,4 +10,5 @@ proc-macro = true
 [dependencies]
 #TODO
 quote = "1.0.38"
+proc-macro2 = "1.0.93"
 syn = { version = "2.0.96", features = ["extra-traits", "full"]}
